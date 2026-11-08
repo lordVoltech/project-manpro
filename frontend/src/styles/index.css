@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+
+  --color-canvas: #f6f3ec;
+  --color-surface: #fffefa;
+  --color-ink: #2d3130;
+  --color-muted: #60594f;
+  --color-line: #e0d9cc;
+
+  --color-brand: #d97706;
+  --color-brand-light: #f59e0b;
+  --color-brand-deep: #78350f;
+
+  --radius-card: 1rem;
+  --radius-control: 0.625rem;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+  }
+
+  body {
+    margin: 0;
+    min-height: 100svh;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    text-transform: capitalize;
+  }
+}

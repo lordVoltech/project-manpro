@@ -11,7 +11,7 @@ import {
   Wallet,
   Wrench,
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Badge,
   Button,
@@ -124,7 +124,7 @@ const quickActions = [
     label: 'Work order baru',
     description: 'Catat servis masuk',
     icon: Plus,
-    to: '/workshop',
+    to: '/workshop?new=1',
   },
   {
     label: 'Catat penjualan',
@@ -147,6 +147,7 @@ const quickActions = [
 ]
 
 export function DashboardPage() {
+  const navigate = useNavigate()
   const maxSales = Math.max(...salesWeek.map((item) => item.value))
 
   return (
@@ -160,7 +161,7 @@ export function DashboardPage() {
               <Download className="h-4 w-4" aria-hidden="true" />
               Unduh laporan
             </Button>
-            <Button size="sm">
+            <Button size="sm" onClick={() => navigate('/workshop?new=1')}>
               <Plus className="h-4 w-4" aria-hidden="true" />
               Work order baru
             </Button>

@@ -1,19 +1,20 @@
 import {
   Bell,
   Building2,
-  Check,
   CreditCard,
   Plus,
   Save,
   ShieldCheck,
   Users,
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import {
   Badge,
   Button,
   Card,
   CardBody,
   CardHeader,
+  Notice,
   PageHeader,
   type BadgeTone,
 } from '../components/ui'
@@ -63,29 +64,49 @@ const team: Array<{
   },
 ]
 
-const paymentMethods = [
+const initialPaymentMethods = [
   { label: 'Tunai', description: 'Pembayaran di kasir', active: true },
   { label: 'Transfer bank', description: 'BCA · 1234567890', active: true },
   { label: 'QRIS', description: 'Semua e-wallet', active: true },
   { label: 'Kartu debit/kredit', description: 'Mesin EDC', active: false },
 ]
 
-const preferences = [
-  { label: 'Notifikasi stok menipis', description: 'Tampilkan peringatan di dashboard', checked: true },
-  { label: 'Ringkasan harian', description: 'Kirim rekap via WhatsApp setiap pukul 20.00', checked: true },
-  { label: 'Cetak nota otomatis', description: 'Langsung buka dialog cetak setelah transaksi', checked: false },
+const initialPreferences = [
+  {
+    label: 'Notifikasi stok menipis',
+    description: 'Tampilkan peringatan di dashboard',
+    checked: true,
+  },
+  {
+    label: 'Ringkasan harian',
+    description: 'Kirim rekap via WhatsApp setiap pukul 20.00',
+    checked: true,
+  },
+  {
+    label: 'Cetak nota otomatis',
+    description: 'Langsung buka dialog cetak setelah transaksi',
+    checked: false,
+  },
 ]
 
-function Switch({ active, label }: { active: boolean; label: string }) {
+type SwitchProps = {
+  active: boolean
+  label: string
+  onToggle: () => void
+}
+
+function Switch({ active, label, onToggle }: SwitchProps) {
   return (
-    <span
+    <button
+      type="button"
       role="switch"
       aria-checked={active}
       aria-label={label}
+      onClick={onToggle}
       className={
         active
-          ? 'inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-brand p-0.5'
-          : 'inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-stone-300 p-0.5'
+          ? 'inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-brand p-0.5 transition-colors'
+          : 'inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-stone-300 p-0.5 transition-colors'
       }
     >
       <span
@@ -95,23 +116,61 @@ function Switch({ active, label }: { active: boolean; label: string }) {
             : 'h-5 w-5 rounded-full bg-white shadow-sm'
         }
       />
-    </span>
+    </button>
   )
 }
 
 export function SettingsPage() {
+  const [paymentMethods, setPaymentMethods] = useState(initialPaymentMethods)
+  const [preferences, setPreferences] = useState(initialPreferences)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (!saved) return
+
+    const timer = window.setTimeout(() => setSaved(false), 3000)
+    return () => window.clearTimeout(timer)
+  }, [saved])
+
+  function togglePaymentMethod(label: string) {
+    setPaymentMethods((previous) =>
+      previous.map((method) =>
+        method.label === label
+          ? { ...method, active: !method.active }
+          : method,
+      ),
+    )
+  }
+
+  function togglePreference(label: string) {
+    setPreferences((previous) =>
+      previous.map((preference) =>
+        preference.label === label
+          ? { ...preference, checked: !preference.checked }
+          : preference,
+      ),
+    )
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Pengaturan"
         description="Identitas bisnis, pengguna, metode pembayaran, dan preferensi."
         actions={
-          <Button size="sm">
+          <Button size="sm" onClick={() => setSaved(true)}>
             <Save className="h-4 w-4" aria-hidden="true" />
             Simpan perubahan
           </Button>
         }
       />
+
+      {saved ? (
+        <Notice tone="success" onDismiss={() => setSaved(false)}>
+          Perubahan pengaturan disimpan untuk sesi ini (simulasi). Belum ada data
+          yang dikirim ke server.
+        </Notice>
+      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2">
@@ -119,7 +178,9 @@ export function SettingsPage() {
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-brand-deep" aria-hidden="true" />
               <div>
-                <h2 className="font-display text-lg text-ink">Identitas Bisnis</h2>
+                <h2 className="font-display text-lg text-ink">
+                  Identitas Bisnis
+                </h2>
                 <p className="mt-0.5 text-xs text-muted">
                   Tampil pada nota dan laporan
                 </p>
@@ -211,7 +272,9 @@ export function SettingsPage() {
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-brand-deep" aria-hidden="true" />
               <div>
-                <h2 className="font-display text-lg text-ink">Pengguna & Peran</h2>
+                <h2 className="font-display text-lg text-ink">
+                  Pengguna & Peran
+                </h2>
                 <p className="mt-0.5 text-xs text-muted">Akses tim</p>
               </div>
             </div>
@@ -226,8 +289,12 @@ export function SettingsPage() {
                   {member.initials}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ink">{member.name}</p>
-                  <p className="truncate text-[11px] text-muted">{member.email}</p>
+                  <p className="truncate text-sm font-medium text-ink">
+                    {member.name}
+                  </p>
+                  <p className="truncate text-[11px] text-muted">
+                    {member.email}
+                  </p>
                 </div>
                 <div className="shrink-0 text-right">
                   <Badge tone={roleTone[member.role]}>{member.role}</Badge>
@@ -238,7 +305,10 @@ export function SettingsPage() {
           </div>
           <div className="border-t border-line px-5 py-3">
             <p className="flex items-center gap-1.5 text-xs text-muted">
-              <ShieldCheck className="h-3.5 w-3.5 text-brand-deep" aria-hidden="true" />
+              <ShieldCheck
+                className="h-3.5 w-3.5 text-brand-deep"
+                aria-hidden="true"
+              />
               Owner memiliki akses penuh ke semua modul.
             </p>
           </div>
@@ -249,10 +319,17 @@ export function SettingsPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-brand-deep" aria-hidden="true" />
+              <CreditCard
+                className="h-5 w-5 text-brand-deep"
+                aria-hidden="true"
+              />
               <div>
-                <h2 className="font-display text-lg text-ink">Metode Pembayaran</h2>
-                <p className="mt-0.5 text-xs text-muted">Aktif di halaman transaksi</p>
+                <h2 className="font-display text-lg text-ink">
+                  Metode Pembayaran
+                </h2>
+                <p className="mt-0.5 text-xs text-muted">
+                  Aktif di halaman transaksi
+                </p>
               </div>
             </div>
           </CardHeader>
@@ -263,7 +340,11 @@ export function SettingsPage() {
                   <p className="text-sm font-medium text-ink">{method.label}</p>
                   <p className="text-xs text-muted">{method.description}</p>
                 </div>
-                <Switch active={method.active} label={`Aktifkan ${method.label}`} />
+                <Switch
+                  active={method.active}
+                  label={`Aktifkan ${method.label}`}
+                  onToggle={() => togglePaymentMethod(method.label)}
+                />
               </div>
             ))}
           </div>
@@ -284,34 +365,37 @@ export function SettingsPage() {
               <Bell className="h-5 w-5 text-brand-deep" aria-hidden="true" />
               <div>
                 <h2 className="font-display text-lg text-ink">Preferensi</h2>
-                <p className="mt-0.5 text-xs text-muted">Notifikasi dan perilaku aplikasi</p>
+                <p className="mt-0.5 text-xs text-muted">
+                  Notifikasi dan perilaku aplikasi
+                </p>
               </div>
             </div>
           </CardHeader>
           <div className="divide-y divide-line">
             {preferences.map((preference) => (
-              <div key={preference.label} className="flex items-center gap-3 px-5 py-3.5">
+              <label
+                key={preference.label}
+                className="flex cursor-pointer items-center gap-3 px-5 py-3.5"
+              >
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-ink">{preference.label}</p>
+                  <p className="text-sm font-medium text-ink">
+                    {preference.label}
+                  </p>
                   <p className="text-xs text-muted">{preference.description}</p>
                 </div>
-                <span
-                  className={
-                    preference.checked
-                      ? 'grid h-5 w-5 shrink-0 place-items-center rounded bg-brand text-white'
-                      : 'grid h-5 w-5 shrink-0 place-items-center rounded border border-line bg-canvas'
-                  }
-                >
-                  {preference.checked ? (
-                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                  ) : null}
-                </span>
-              </div>
+                <input
+                  type="checkbox"
+                  checked={preference.checked}
+                  onChange={() => togglePreference(preference.label)}
+                  className="h-4 w-4 shrink-0 rounded border-line accent-[#d97706]"
+                />
+              </label>
             ))}
           </div>
           <div className="border-t border-line px-5 py-3">
             <p className="text-xs text-muted">
-              Pengaturan belum tersimpan. Ini hanya tampilan template.
+              Perubahan hanya berlaku selama halaman terbuka. Belum ada
+              penyimpanan permanen.
             </p>
           </div>
         </Card>

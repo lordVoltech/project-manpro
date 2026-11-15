@@ -4,18 +4,20 @@ import {
   ArrowUpRight,
   Boxes,
   Download,
-  Filter,
   Package,
   Plus,
-  Search,
   Wallet,
 } from 'lucide-react'
+import { useState } from 'react'
 import {
   Badge,
   Button,
   Card,
   CardHeader,
+  EmptyState,
+  FilterChips,
   PageHeader,
+  SearchField,
   StatCard,
   type BadgeTone,
 } from '../components/ui'
@@ -27,6 +29,13 @@ const statusTone: Record<StockStatus, BadgeTone> = {
   Menipis: 'warning',
   Habis: 'danger',
 }
+
+const filters: Array<StockStatus | 'Semua'> = [
+  'Semua',
+  'Aman',
+  'Menipis',
+  'Habis',
+]
 
 const parts: Array<{
   sku: string
@@ -143,6 +152,30 @@ const movements = [
 ]
 
 export function StockPage() {
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StockStatus | 'Semua'>(
+    'Semua',
+  )
+
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredParts = parts.filter((part) => {
+    const matchesStatus =
+      statusFilter === 'Semua' || part.status === statusFilter
+    const matchesQuery =
+      normalizedQuery.length === 0 ||
+      [part.name, part.sku, part.category]
+        .join(' ')
+        .toLowerCase()
+        .includes(normalizedQuery)
+
+    return matchesStatus && matchesQuery
+  })
+
+  function resetFilters() {
+    setQuery('')
+    setStatusFilter('Semua')
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -189,14 +222,17 @@ export function StockPage() {
 
       <div className="flex flex-col gap-3 rounded-card border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+          <AlertTriangle
+            className="mt-0.5 h-5 w-5 shrink-0 text-amber-700"
+            aria-hidden="true"
+          />
           <div>
             <p className="text-sm font-medium text-amber-900">
               3 barang perlu perhatian
             </p>
             <p className="text-xs text-amber-800">
-              V-Belt NMAX habis, sementara oli dan kampas rem berada di bawah batas
-              minimum.
+              V-Belt NMAX habis, sementara oli dan kampas rem berada di bawah
+              batas minimum.
             </p>
           </div>
         </div>
@@ -205,86 +241,117 @@ export function StockPage() {
         </Button>
       </div>
 
+      <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+        <FilterChips
+          options={filters}
+          value={statusFilter}
+          onChange={setStatusFilter}
+        />
+        <SearchField
+          value={query}
+          onChange={setQuery}
+          placeholder="Cari barang, SKU, atau kategori"
+          label="Cari barang"
+          className="sm:w-64"
+        />
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2">
-          <CardHeader className="flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardHeader>
             <div>
               <h2 className="font-display text-lg text-ink">Daftar Barang</h2>
-              <p className="mt-0.5 text-xs text-muted">Urut dari stok terendah</p>
+              <p className="mt-0.5 text-xs text-muted">
+                Urut dari stok terendah
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 sm:w-52">
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
-                  aria-hidden="true"
-                />
-                <input
-                  type="search"
-                  placeholder="Cari barang atau SKU"
-                  className="w-full rounded-control border border-line bg-canvas py-2 pl-9 pr-3 text-xs text-ink outline-none placeholder:text-muted/70 focus:border-brand focus:ring-2 focus:ring-brand/20"
-                />
-              </div>
-              <Button variant="secondary" size="sm" aria-label="Filter barang">
-                <Filter className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </div>
+            <Badge tone="neutral">{filteredParts.length} barang</Badge>
           </CardHeader>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-line text-[10px] uppercase tracking-widest text-muted">
-                  <th className="px-5 py-3 font-medium">Barang</th>
-                  <th className="px-3 py-3 font-medium">Kategori</th>
-                  <th className="px-3 py-3 font-medium">Stok</th>
-                  <th className="px-3 py-3 font-medium">Harga</th>
-                  <th className="px-5 py-3 text-right font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {parts.map((part) => (
-                  <tr key={part.sku} className="transition-colors hover:bg-canvas/60">
-                    <td className="px-5 py-3">
-                      <p className="font-medium text-ink">{part.name}</p>
-                      <p className="text-xs text-muted">{part.sku}</p>
-                    </td>
-                    <td className="px-3 py-3 text-xs text-muted">{part.category}</td>
-                    <td className="px-3 py-3">
-                      <p
-                        className={
-                          part.status === 'Habis'
-                            ? 'text-sm font-medium text-red-700'
-                            : part.status === 'Menipis'
-                              ? 'text-sm font-medium text-amber-700'
-                              : 'text-sm font-medium text-ink'
-                        }
-                      >
-                        {part.stock} pcs
-                      </p>
-                      <p className="text-[11px] text-muted">min. {part.min}</p>
-                    </td>
-                    <td className="px-3 py-3 text-xs text-ink">{part.price}</td>
-                    <td className="px-5 py-3 text-right">
-                      <Badge tone={statusTone[part.status]}>{part.status}</Badge>
-                    </td>
+          {filteredParts.length === 0 ? (
+            <div className="p-5">
+              <EmptyState
+                icon={Package}
+                title="Barang tidak ditemukan"
+                description="Coba kata kunci lain atau tampilkan semua status stok."
+                action={
+                  <Button variant="secondary" size="sm" onClick={resetFilters}>
+                    Reset filter
+                  </Button>
+                }
+              />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line text-[10px] uppercase tracking-widest text-muted">
+                    <th className="px-5 py-3 font-medium">Barang</th>
+                    <th className="px-3 py-3 font-medium">Kategori</th>
+                    <th className="px-3 py-3 font-medium">Stok</th>
+                    <th className="px-3 py-3 font-medium">Harga</th>
+                    <th className="px-5 py-3 text-right font-medium">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {filteredParts.map((part) => (
+                    <tr
+                      key={part.sku}
+                      className="transition-colors hover:bg-canvas/60"
+                    >
+                      <td className="px-5 py-3">
+                        <p className="font-medium text-ink">{part.name}</p>
+                        <p className="text-xs text-muted">{part.sku}</p>
+                      </td>
+                      <td className="px-3 py-3 text-xs text-muted">
+                        {part.category}
+                      </td>
+                      <td className="px-3 py-3">
+                        <p
+                          className={
+                            part.status === 'Habis'
+                              ? 'text-sm font-medium text-red-700'
+                              : part.status === 'Menipis'
+                                ? 'text-sm font-medium text-amber-700'
+                                : 'text-sm font-medium text-ink'
+                          }
+                        >
+                          {part.stock} pcs
+                        </p>
+                        <p className="text-[11px] text-muted">min. {part.min}</p>
+                      </td>
+                      <td className="px-3 py-3 text-xs text-ink">
+                        {part.price}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <Badge tone={statusTone[part.status]}>
+                          {part.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
 
         <div className="space-y-4">
           <Card>
             <CardHeader>
               <div>
-                <h2 className="font-display text-lg text-ink">Pergerakan Terbaru</h2>
+                <h2 className="font-display text-lg text-ink">
+                  Pergerakan Terbaru
+                </h2>
                 <p className="mt-0.5 text-xs text-muted">Hari ini</p>
               </div>
             </CardHeader>
             <div className="divide-y divide-line">
               {movements.map((movement) => (
-                <div key={`${movement.name}-${movement.time}`} className="flex items-start gap-3 px-5 py-3.5">
+                <div
+                  key={`${movement.name}-${movement.time}`}
+                  className="flex items-start gap-3 px-5 py-3.5"
+                >
                   <span
                     className={
                       movement.direction === 'in'
@@ -295,7 +362,10 @@ export function StockPage() {
                     {movement.direction === 'in' ? (
                       <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
                     ) : (
-                      <ArrowDownRight className="h-3.5 w-3.5" aria-hidden="true" />
+                      <ArrowDownRight
+                        className="h-3.5 w-3.5"
+                        aria-hidden="true"
+                      />
                     )}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -341,7 +411,9 @@ export function StockPage() {
                 <div key={category.label}>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted">{category.label}</span>
-                    <span className="font-medium text-ink">{category.value}%</span>
+                    <span className="font-medium text-ink">
+                      {category.value}%
+                    </span>
                   </div>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-canvas">
                     <div

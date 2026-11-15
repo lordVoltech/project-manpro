@@ -24,6 +24,7 @@ import {
   Card,
   CardBody,
   CardHeader,
+  Notice,
   PageHeader,
 } from '../components/ui'
 
@@ -133,6 +134,11 @@ const principles = [
     description:
       'Warna cream, charcoal, dan amber dipakai hemat agar status mudah dibedakan.',
   },
+  {
+    title: 'Interaktif',
+    description:
+      'Filter, pencarian, drawer detail, dan formulir work order berjalan di sisi klien.',
+  },
 ]
 
 export function DesignBoardPage() {
@@ -146,7 +152,7 @@ export function DesignBoardPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {principles.map((principle) => (
           <Card key={principle.title} className="p-5">
             <span className="grid h-9 w-9 place-items-center rounded-control bg-brand/10 text-brand-deep">
@@ -285,6 +291,16 @@ export function DesignBoardPage() {
                 </div>
               </div>
             </div>
+
+            <div className="border-t border-line pt-4">
+              <p className="mb-2 text-[10px] uppercase tracking-widest text-muted">
+                Notifikasi
+              </p>
+              <Notice tone="info">
+                Contoh notifikasi. Komponen ini dipakai setelah aksi seperti
+                membuat work order atau menandai nota lunas.
+              </Notice>
+            </div>
           </CardBody>
         </Card>
       </div>
@@ -337,7 +353,7 @@ export function DesignBoardPage() {
         </div>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Card className="p-5">
           <div className="flex items-center gap-2">
             <Monitor className="h-5 w-5 text-brand-deep" aria-hidden="true" />
@@ -363,12 +379,26 @@ export function DesignBoardPage() {
             <li>Area konten memberi ruang untuk safe area dan bottom nav.</li>
           </ul>
         </Card>
+
+        <Card className="p-5">
+          <div className="flex items-center gap-2">
+            <Check className="h-5 w-5 text-brand-deep" aria-hidden="true" />
+            <h2 className="font-display text-lg text-ink">Interaksi</h2>
+          </div>
+          <ul className="mt-3 space-y-2 text-xs text-muted">
+            <li>Filter status dan pencarian di Bengkel, Showroom, Stok, Transaksi.</li>
+            <li>Drawer detail untuk work order, unit motor, nota, dan pelanggan.</li>
+            <li>Form work order baru yang langsung menambah antrean.</li>
+            <li>Tandai selesai, tandai terjual, tandai lunas, dan toggle pengaturan.</li>
+          </ul>
+        </Card>
       </div>
 
       <div className="rounded-card border border-dashed border-line bg-surface/60 px-4 py-3">
         <p className="text-xs text-muted">
-          Design Board adalah layar referensi internal. Semua data, tombol, dan filter
-          masih statis sampai tahap integrasi berikutnya.
+          Design Board adalah layar referensi internal. Interaksi berjalan di sisi
+          klien dan kembali ke data awal saat halaman dimuat ulang. Belum ada
+          backend atau penyimpanan permanen.
         </p>
       </div>
     </div>

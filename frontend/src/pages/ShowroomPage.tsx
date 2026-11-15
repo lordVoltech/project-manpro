@@ -1,13 +1,11 @@
-import {
-  Bike,
-  Download,
-  Filter,
-  Fuel,
-  Gauge,
-  MapPin,
-  Plus,
-} from 'lucide-react'
+import { Bike, Download, Filter, Fuel, Gauge, MapPin, Plus } from 'lucide-react'
 import { useState } from 'react'
+import { api, ApiError } from '../api'
+import type {
+  ListResponse,
+  ShowroomUnit,
+  UnitStatus,
+} from '../api/types'
 import {
   Badge,
   Button,
@@ -15,184 +13,113 @@ import {
   CardBody,
   Drawer,
   EmptyState,
+  ErrorState,
   FilterChips,
+  LoadingState,
   Notice,
   PageHeader,
   SearchField,
   StatCard,
-  type BadgeTone,
 } from '../components/ui'
+import { useApiQuery } from '../hooks/useApiQuery'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
+import {
+  formatDate,
+  formatNumber,
+  formatRupiah,
+} from '../lib/format'
+import { unitStatusLabels } from '../lib/labels'
 
-type UnitStatus = 'Tersedia' | 'Reserved' | 'Terjual'
+type UnitFilter = 'Semua' | 'Tersedia' | 'Reserved' | 'Terjual'
 
-type ShowroomUnit = {
-  id: string
-  name: string
-  year: string
-  plate: string
-  price: string
-  status: UnitStatus
-  mileage: string
-  fuel: string
-  location: string
-  accent: string
-  color: string
-  engine: string
-  tax: string
-  notes: string
+const filters: UnitFilter[] = ['Semua', 'Tersedia', 'Reserved', 'Terjual']
+
+const statusByFilter: Record<Exclude<UnitFilter, 'Semua'>, UnitStatus> = {
+  Tersedia: 'tersedia',
+  Reserved: 'reserved',
+  Terjual: 'terjual',
 }
 
-const statusTone: Record<UnitStatus, BadgeTone> = {
-  Tersedia: 'success',
-  Reserved: 'info',
-  Terjual: 'neutral',
+const accentByStatus: Record<UnitStatus, string> = {
+  tersedia: 'from-stone-200 to-stone-100',
+  reserved: 'from-amber-100 to-stone-100',
+  terjual: 'from-emerald-100 to-stone-100',
 }
 
-const filters: Array<UnitStatus | 'Semua'> = [
-  'Semua',
-  'Tersedia',
-  'Reserved',
-  'Terjual',
-]
-
-const initialUnits: ShowroomUnit[] = [
-  {
-    id: 'MTR-01',
-    name: 'Yamaha NMAX 155',
-    year: '2023',
-    plate: 'B 1234 XYZ',
-    price: 'Rp 27.500.000',
-    status: 'Tersedia',
-    mileage: '8.400 km',
-    fuel: 'Bensin',
-    location: 'Showroom A',
-    accent: 'from-stone-200 to-stone-100',
-    color: 'Hitam Doff',
-    engine: '155 cc',
-    tax: 'Pajak hidup s.d. Maret 2027',
-    notes: 'Servis rutin lengkap, kunci ganda, ban masih tebal.',
-  },
-  {
-    id: 'MTR-02',
-    name: 'Honda Vario 160',
-    year: '2024',
-    plate: 'D 5678 ABC',
-    price: 'Rp 24.000.000',
-    status: 'Reserved',
-    mileage: '3.100 km',
-    fuel: 'Bensin',
-    location: 'Showroom A',
-    accent: 'from-amber-100 to-stone-100',
-    color: 'Merah Matte',
-    engine: '160 cc',
-    tax: 'Pajak hidup s.d. Agustus 2027',
-    notes: 'DP sudah diterima, menunggu pelunasan pembeli.',
-  },
-  {
-    id: 'MTR-03',
-    name: 'Honda PCX 160',
-    year: '2022',
-    plate: 'F 9021 KL',
-    price: 'Rp 25.750.000',
-    status: 'Tersedia',
-    mileage: '12.600 km',
-    fuel: 'Bensin',
-    location: 'Showroom B',
-    accent: 'from-sky-100 to-stone-100',
-    color: 'Putih Pearl',
-    engine: '160 cc',
-    tax: 'Pajak hidup s.d. Januari 2027',
-    notes: 'Satu tangan, riwayat servis tersedia, STNK lengkap.',
-  },
-  {
-    id: 'MTR-04',
-    name: 'Yamaha XMAX 250',
-    year: '2023',
-    plate: 'B 4455 QQ',
-    price: 'Rp 42.000.000',
-    status: 'Tersedia',
-    mileage: '5.200 km',
-    fuel: 'Bensin',
-    location: 'Showroom B',
-    accent: 'from-stone-300 to-stone-100',
-    color: 'Silver',
-    engine: '250 cc',
-    tax: 'Pajak hidup s.d. Juni 2027',
-    notes: 'Unit istimewa, kelengkapan lengkap, siap touring.',
-  },
-  {
-    id: 'MTR-05',
-    name: 'Honda Beat Street',
-    year: '2021',
-    plate: 'B 7788 TT',
-    price: 'Rp 13.500.000',
-    status: 'Terjual',
-    mileage: '21.900 km',
-    fuel: 'Bensin',
-    location: 'Gudang',
-    accent: 'from-emerald-100 to-stone-100',
-    color: 'Hitam',
-    engine: '110 cc',
-    tax: 'Pajak hidup s.d. Oktober 2026',
-    notes: 'Sudah terjual. Menunggu proses serah terima dokumen.',
-  },
-  {
-    id: 'MTR-06',
-    name: 'Yamaha Aerox 155',
-    year: '2022',
-    plate: 'B 3322 RR',
-    price: 'Rp 22.800.000',
-    status: 'Tersedia',
-    mileage: '9.700 km',
-    fuel: 'Bensin',
-    location: 'Showroom A',
-    accent: 'from-rose-100 to-stone-100',
-    color: 'Biru Racing',
-    engine: '155 cc',
-    tax: 'Pajak hidup s.d. Desember 2026',
-    notes: 'Body mulus, mesin sehat, sudah servis besar.',
-  },
-]
+type NoticeState = { tone: 'success' | 'danger'; message: string }
 
 export function ShowroomPage() {
-  const [units, setUnits] = useState<ShowroomUnit[]>(initialUnits)
-  const [activeFilter, setActiveFilter] = useState<UnitStatus | 'Semua'>('Semua')
+  const [activeFilter, setActiveFilter] = useState<UnitFilter>('Semua')
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNotice] = useState<NoticeState | null>(null)
+  const [pendingId, setPendingId] = useState<string | null>(null)
+  const debouncedQuery = useDebouncedValue(query.trim())
 
-  const selectedUnit = units.find((unit) => unit.id === selectedId) ?? null
+  const statusParam =
+    activeFilter === 'Semua' ? undefined : statusByFilter[activeFilter]
 
-  const normalizedQuery = query.trim().toLowerCase()
-  const filteredUnits = units.filter((unit) => {
-    const matchesFilter =
-      activeFilter === 'Semua' || unit.status === activeFilter
-    const matchesQuery =
-      normalizedQuery.length === 0 ||
-      [unit.id, unit.name, unit.plate, unit.year, unit.location]
-        .join(' ')
-        .toLowerCase()
-        .includes(normalizedQuery)
+  const allUnitsQuery = useApiQuery(
+    () =>
+      api.get<ListResponse<ShowroomUnit>>('/showroom/units', {
+        query: { per_page: 100 },
+      }),
+    [],
+  )
 
-    return matchesFilter && matchesQuery
-  })
+  const unitsQuery = useApiQuery(
+    () =>
+      api.get<ListResponse<ShowroomUnit>>('/showroom/units', {
+        query: {
+          per_page: 100,
+          status: statusParam,
+          q: debouncedQuery || undefined,
+        },
+      }),
+    [statusParam, debouncedQuery],
+  )
 
-  const availableCount = units.filter((unit) => unit.status === 'Tersedia').length
-  const reservedCount = units.filter((unit) => unit.status === 'Reserved').length
-  const soldCount = units.filter((unit) => unit.status === 'Terjual').length
+  const allUnits = allUnitsQuery.data?.data ?? []
+  const units = unitsQuery.data?.data ?? []
+  const selectedUnit =
+    allUnits.find((unit) => unit.id === selectedId) ??
+    units.find((unit) => unit.id === selectedId) ??
+    null
+
+  const availableCount = allUnits.filter(
+    (unit) => unit.status === 'tersedia',
+  ).length
+  const reservedCount = allUnits.filter(
+    (unit) => unit.status === 'reserved',
+  ).length
+  const soldCount = allUnits.filter((unit) => unit.status === 'terjual').length
 
   function resetFilters() {
     setQuery('')
     setActiveFilter('Semua')
   }
 
-  function markSold(unit: ShowroomUnit) {
-    setUnits((previous) =>
-      previous.map((item) =>
-        item.id === unit.id ? { ...item, status: 'Terjual' } : item,
-      ),
-    )
-    setNotice(`Unit ${unit.name} (${unit.plate}) ditandai terjual (simulasi).`)
+  async function updateStatus(unit: ShowroomUnit, status: UnitStatus) {
+    setPendingId(unit.id)
+    try {
+      await api.patch(`/showroom/units/${unit.id}`, { status })
+      allUnitsQuery.refetch()
+      unitsQuery.refetch()
+      setNotice({
+        tone: 'success',
+        message: `Status ${unit.model_name} (${unit.plate_number}) diubah menjadi ${unitStatusLabels[status].label}.`,
+      })
+    } catch (caught) {
+      setNotice({
+        tone: 'danger',
+        message:
+          caught instanceof ApiError
+            ? caught.message
+            : 'Status unit gagal diubah.',
+      })
+    } finally {
+      setPendingId(null)
+    }
   }
 
   return (
@@ -215,15 +142,15 @@ export function ShowroomPage() {
       />
 
       {notice ? (
-        <Notice tone="success" onDismiss={() => setNotice(null)}>
-          {notice}
+        <Notice tone={notice.tone} onDismiss={() => setNotice(null)}>
+          {notice.message}
         </Notice>
       ) : null}
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard
           label="Total Unit"
-          value={String(units.length)}
+          value={String(allUnits.length)}
           hint="Semua status"
           icon={Bike}
         />
@@ -244,7 +171,7 @@ export function ShowroomPage() {
         <StatCard
           label="Terjual"
           value={`${soldCount} unit`}
-          hint="Termasuk unit hari ini"
+          hint="Tercatat di transaksi"
           icon={Fuel}
           tone="brand"
         />
@@ -270,7 +197,14 @@ export function ShowroomPage() {
         </div>
       </div>
 
-      {filteredUnits.length === 0 ? (
+      {unitsQuery.error ? (
+        <ErrorState
+          message={unitsQuery.error.message}
+          onRetry={unitsQuery.refetch}
+        />
+      ) : unitsQuery.loading && !unitsQuery.data ? (
+        <LoadingState label="Memuat unit showroom…" />
+      ) : units.length === 0 ? (
         <EmptyState
           icon={Bike}
           title="Motor tidak ditemukan"
@@ -283,68 +217,68 @@ export function ShowroomPage() {
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredUnits.map((unit) => (
-            <Card key={unit.id} className="overflow-hidden">
-              <div
-                className={`relative flex aspect-[4/3] items-center justify-center bg-gradient-to-br ${unit.accent}`}
-              >
-                <Bike className="h-20 w-20 text-ink/15" aria-hidden="true" />
-                <span className="absolute left-3 top-3 rounded-full bg-surface/90 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-muted">
-                  {unit.id}
-                </span>
-                <Badge
-                  tone={statusTone[unit.status]}
-                  className="absolute right-3 top-3"
+          {units.map((unit) => {
+            const meta = unitStatusLabels[unit.status]
+            return (
+              <Card key={unit.id} className="overflow-hidden">
+                <div
+                  className={`relative flex aspect-[4/3] items-center justify-center bg-gradient-to-br ${accentByStatus[unit.status]}`}
                 >
-                  {unit.status}
-                </Badge>
-                <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-surface/90 px-2 py-0.5 text-[10px] text-muted">
-                  <MapPin className="h-3 w-3" aria-hidden="true" />
-                  {unit.location}
-                </span>
-              </div>
-
-              <CardBody className="space-y-3">
-                <div>
-                  <h2 className="font-display text-lg leading-tight text-ink">
-                    {unit.name}
-                  </h2>
-                  <p className="mt-0.5 text-xs text-muted">
-                    {unit.year} · {unit.plate}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-4 text-xs text-muted">
-                  <span className="inline-flex items-center gap-1">
-                    <Gauge className="h-3.5 w-3.5" aria-hidden="true" />
-                    {unit.mileage}
+                  <Bike className="h-20 w-20 text-ink/15" aria-hidden="true" />
+                  <span className="absolute left-3 top-3 rounded-full bg-surface/90 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-muted">
+                    {unit.id}
                   </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Fuel className="h-3.5 w-3.5" aria-hidden="true" />
-                    {unit.fuel}
+                  <Badge tone={meta.tone} className="absolute right-3 top-3">
+                    {meta.label}
+                  </Badge>
+                  <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-surface/90 px-2 py-0.5 text-[10px] text-muted">
+                    <MapPin className="h-3 w-3" aria-hidden="true" />
+                    {unit.location}
                   </span>
                 </div>
 
-                <div className="flex items-end justify-between gap-2 border-t border-line pt-3">
+                <CardBody className="space-y-3">
                   <div>
-                    <p className="text-[10px] uppercase tracking-widest text-muted">
-                      Harga
-                    </p>
-                    <p className="text-base font-medium text-brand-deep">
-                      {unit.price}
+                    <h2 className="font-display text-lg leading-tight text-ink">
+                      {unit.model_name}
+                    </h2>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {unit.year} · {unit.plate_number}
                     </p>
                   </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setSelectedId(unit.id)}
-                  >
-                    Lihat detail
-                  </Button>
-                </div>
-              </CardBody>
-            </Card>
-          ))}
+
+                  <div className="flex items-center gap-4 text-xs text-muted">
+                    <span className="inline-flex items-center gap-1">
+                      <Gauge className="h-3.5 w-3.5" aria-hidden="true" />
+                      {formatNumber(unit.mileage_km)} km
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Fuel className="h-3.5 w-3.5" aria-hidden="true" />
+                      {unit.fuel_type}
+                    </span>
+                  </div>
+
+                  <div className="flex items-end justify-between gap-2 border-t border-line pt-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-muted">
+                        Harga
+                      </p>
+                      <p className="text-base font-medium text-brand-deep">
+                        {formatRupiah(unit.price)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setSelectedId(unit.id)}
+                    >
+                      Lihat detail
+                    </Button>
+                  </div>
+                </CardBody>
+              </Card>
+            )
+          })}
         </div>
       )}
 
@@ -352,33 +286,48 @@ export function ShowroomPage() {
         <Drawer
           open
           onClose={() => setSelectedId(null)}
-          title={selectedUnit.name}
-          description={`${selectedUnit.year} · ${selectedUnit.plate}`}
+          title={selectedUnit.model_name}
+          description={`${selectedUnit.year} · ${selectedUnit.plate_number}`}
           footer={
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <Button variant="secondary" onClick={() => setSelectedId(null)}>
                 Tutup
               </Button>
-              {selectedUnit.status === 'Terjual' ? (
-                <Badge tone="success">Terjual</Badge>
-              ) : (
-                <Button onClick={() => markSold(selectedUnit)}>
-                  Tandai terjual
+              {selectedUnit.status === 'tersedia' ? (
+                <Button
+                  disabled={pendingId === selectedUnit.id}
+                  onClick={() => updateStatus(selectedUnit, 'reserved')}
+                >
+                  {pendingId === selectedUnit.id
+                    ? 'Menyimpan…'
+                    : 'Tandai reserved'}
                 </Button>
+              ) : selectedUnit.status === 'reserved' ? (
+                <Button
+                  variant="secondary"
+                  disabled={pendingId === selectedUnit.id}
+                  onClick={() => updateStatus(selectedUnit, 'tersedia')}
+                >
+                  {pendingId === selectedUnit.id
+                    ? 'Menyimpan…'
+                    : 'Batalkan reservasi'}
+                </Button>
+              ) : (
+                <Badge tone="success">Terjual</Badge>
               )}
             </div>
           }
         >
           <div className="space-y-5">
             <div
-              className={`relative flex aspect-[16/9] items-center justify-center rounded-card bg-gradient-to-br ${selectedUnit.accent}`}
+              className={`relative flex aspect-[16/9] items-center justify-center rounded-card bg-gradient-to-br ${accentByStatus[selectedUnit.status]}`}
             >
               <Bike className="h-24 w-24 text-ink/15" aria-hidden="true" />
               <Badge
-                tone={statusTone[selectedUnit.status]}
+                tone={unitStatusLabels[selectedUnit.status].tone}
                 className="absolute right-3 top-3"
               >
-                {selectedUnit.status}
+                {unitStatusLabels[selectedUnit.status].label}
               </Badge>
             </div>
 
@@ -387,7 +336,7 @@ export function ShowroomPage() {
                 Harga penawaran
               </p>
               <p className="mt-0.5 font-display text-2xl text-brand-deep">
-                {selectedUnit.price}
+                {formatRupiah(selectedUnit.price)}
               </p>
               <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted">
                 <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
@@ -405,19 +354,19 @@ export function ShowroomPage() {
               <div>
                 <p className="text-muted">Plat nomor</p>
                 <p className="mt-0.5 font-medium text-ink">
-                  {selectedUnit.plate}
+                  {selectedUnit.plate_number}
                 </p>
               </div>
               <div>
                 <p className="text-muted">Kilometer</p>
                 <p className="mt-0.5 font-medium text-ink">
-                  {selectedUnit.mileage}
+                  {formatNumber(selectedUnit.mileage_km)} km
                 </p>
               </div>
               <div>
                 <p className="text-muted">Bahan bakar</p>
                 <p className="mt-0.5 font-medium text-ink">
-                  {selectedUnit.fuel}
+                  {selectedUnit.fuel_type}
                 </p>
               </div>
               <div>
@@ -429,7 +378,7 @@ export function ShowroomPage() {
               <div>
                 <p className="text-muted">Mesin</p>
                 <p className="mt-0.5 font-medium text-ink">
-                  {selectedUnit.engine}
+                  {selectedUnit.engine_cc} cc
                 </p>
               </div>
             </div>
@@ -437,16 +386,23 @@ export function ShowroomPage() {
             <div>
               <h3 className="text-xs font-medium text-ink">Pajak & dokumen</h3>
               <p className="mt-1 text-xs leading-relaxed text-muted">
-                {selectedUnit.tax}
+                Pajak hidup sampai {formatDate(selectedUnit.tax_valid_until)}.
+                Unit terdaftar sejak {formatDate(selectedUnit.listed_at)}.
               </p>
             </div>
 
             <div>
               <h3 className="text-xs font-medium text-ink">Catatan unit</h3>
               <p className="mt-1 text-xs leading-relaxed text-muted">
-                {selectedUnit.notes}
+                {selectedUnit.notes ?? 'Belum ada catatan untuk unit ini.'}
               </p>
             </div>
+
+            <p className="rounded-control bg-canvas px-3 py-2 text-[11px] leading-relaxed text-muted">
+              Penjualan unit dicatat melalui menu Transaksi, supaya stok dan
+              laporan tetap konsisten. Dari sini status hanya bisa diubah antara
+              tersedia dan reserved.
+            </p>
           </div>
         </Drawer>
       ) : null}
